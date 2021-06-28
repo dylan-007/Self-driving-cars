@@ -87,16 +87,18 @@ def detect_red_and_yellow(img, Threshold=0.19):
     print(rate)
 
     if rate >= Threshold:
-        return True
+        return 1
+    elif 0.1<rate<Threshold :
+        return 2
     else:
-        return False
+        return 3
 
 
 
 def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=5, min_score_thresh=0.5,traffic_light_label=10):
 
     im_width, im_height = image.size
-    stop_flag = False
+    stop_flag = 10
     for i in range(min(max_boxes_to_draw, boxes.shape[0])):
         if scores[i] > min_score_thresh and classes[i] == traffic_light_label:
             ymin, xmin, ymax, xmax = tuple(boxes[i].tolist())
@@ -104,8 +106,10 @@ def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=
                                           ymin * im_height, ymax * im_height)
             crop_img = image.crop((left, top, right, bottom))
 
-            if detect_red_and_yellow(crop_img):
-                stop_flag = True
+            if detect_red_and_yellow(crop_img) == 1:
+                stop_flag = 1
+            elif detect_red_and_yellow(crop_img) == 2:
+                stop_flag = 2
 
     return stop_flag
 
@@ -120,11 +124,11 @@ def tensor_to_image(tensor):
 
 
 def main():
-    k= 5200
+    k= 9830
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph) as sess:
             while True:
-                image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
+                image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_1/" + str(k) + ".jpg")
                 # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
                 # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal-red.jpg")
                 # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal-green.jpg")
@@ -168,10 +172,10 @@ def main():
                         if scores[0][i] >= 0.5:
                             stop_flag = read_traffic_lights_object(image, np.squeeze(boxes), np.squeeze(scores),np.squeeze(classes).astype(np.int32))
 
-                            if stop_flag:
+                            if stop_flag == 1:
                                 print("Red signal detected")
                                 cv2.putText(image_np, 'Red Signal..STOP!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
-                            else:
+                            elif stop_flag == 2:
                                 print("Green signal detected")
                                 cv2.putText(image_np, 'GO!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
 
