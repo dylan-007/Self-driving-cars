@@ -60,9 +60,10 @@ def canny(image):
 
 def region(image):
     height = image.shape[0]
-    polygons = np.array([[(25,height-75),(25,height),(460,height),(460,height-75),(280,120),(180,120)]])  #check error
+    polygons = np.array([[(0,height-75),(0,height),(455,height),(455,height-75),(280,120),(180,120)]])  #check error
     mask = np.zeros_like(image)
     cv2.fillPoly(mask,polygons,255)
+    # cv2.imshow("",mask)
     masked_img = cv2.bitwise_and(image,mask)
     return masked_img
 
@@ -146,7 +147,7 @@ def tensor_to_image(tensor):
     return Image.fromarray(tensor)
 
 
-k=5200
+k=5290
 with detection_graph.as_default():
   with tf.Session(graph=detection_graph) as sess:
     while True:
@@ -157,7 +158,7 @@ with detection_graph.as_default():
       image_np = np.copy(line_image)
       canny_img = canny(image_np)
       cropped_img = region(canny_img)
-      lines = cv2.HoughLinesP(cropped_img,2,np.pi/180,10, np.array([]),minLineLength=10,maxLineGap=5)
+      lines = cv2.HoughLinesP(cropped_img,2,np.pi/180,10, np.array([]),minLineLength=60,maxLineGap=5)
       image_np = display_lines(image_np,lines)
 
       image = tensor_to_image(line_image)
@@ -195,12 +196,16 @@ with detection_graph.as_default():
             if scores[0][i] >= 0.5:
               mid_x = (boxes[0][i][1]+boxes[0][i][3])/2
               mid_y = (boxes[0][i][0]+boxes[0][i][2])/2
-              apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)*10
-              cv2.putText(image_np, '{}'.format(apx_distance), (int(mid_x*455),(int(mid_y*256)-25)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
-
-              if apx_distance <=2:
-                if mid_x > 0.3 and mid_x < 0.7:
+            
+              if mid_x > 0.25 and mid_x < 0.75:
+                apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)*10
+                
+                if apx_distance <=2:
+                  cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
                   cv2.putText(image_np, 'WARNING !',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+                else:
+                  cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
+                  
           
 
           # stop sign
@@ -209,7 +214,7 @@ with detection_graph.as_default():
               cv2.putText(image_np, 'STOP !!',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
               
 
-      cv2.imshow('window',image_np)
+      cv2.imshow('result',image_np)
 
       k += 1
       if cv2.waitKey(25) & 0xFF == ord('q'):
