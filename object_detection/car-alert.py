@@ -1,7 +1,3 @@
-# coding: utf-8
-# # Object Detection Demo
-# License: Apache License 2.0 (https://github.com/tensorflow/models/blob/master/LICENSE)
-# source: https://github.com/tensorflow/models
 import numpy as np
 import os
 import six.moves.urllib as urllib
@@ -16,19 +12,14 @@ import cv2
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
-# This is needed since the notebook is stored in the object_detection folder.
 sys.path.append("..")
 
-
-# ## Object detection imports
-# Here are the imports from the object detection module.
 
 from utils import label_map_util
 from utils import visualization_utils as vis_util
 
 
 # # Model preparation 
-# What model to download.
 MODEL_NAME = 'ssd_mobilenet_v1_coco_11_06_2017'
 MODEL_FILE = MODEL_NAME + '.tar.gz'
 DOWNLOAD_BASE = 'http://download.tensorflow.org/models/object_detection/'
@@ -40,16 +31,6 @@ PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 PATH_TO_LABELS = 'data' + '/mscoco_label_map.pbtxt'
 
 NUM_CLASSES = 90
-
-# # ## Download Model
-# opener = urllib.request.URLopener()
-# opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
-# tar_file = tarfile.open(MODEL_FILE)
-# for file in tar_file.getmembers():
-#   file_name = os.path.basename(file.name)
-#   if 'frozen_inference_graph.pb' in file_name:
-#     tar_file.extract(file, os.getcwd())
-
 
 # ## Load a (frozen) Tensorflow model into memory.
 detection_graph = tf.Graph()
@@ -68,54 +49,59 @@ categories = label_map_util.convert_label_map_to_categories(label_map, max_num_c
 category_index = label_map_util.create_category_index(categories)
 
 
-# # ## Helper code
-# def load_image_into_numpy_array(image):
-#   (im_width, im_height) = image.size
-#   return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
-
-k=0
+k=3096
 with detection_graph.as_default():
   with tf.Session(graph=detection_graph) as sess:
     while True:
-      image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_1/" + str(k) + ".jpg")
-      # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
+      image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
+
+
+      # stop sign verify
+      # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
+
       image_np_expanded = np.expand_dims(image_np, axis=0)
       image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-      # Each box represents a part of the image where a particular object was detected.
+      
       boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-      # Each score represent how level of confidence for each of the objects.
-      # Score is shown on the result image, together with the class label.
       scores = detection_graph.get_tensor_by_name('detection_scores:0')
       classes = detection_graph.get_tensor_by_name('detection_classes:0')
       num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+      
       # Actual detection.
       (boxes, scores, classes, num_detections) = sess.run([boxes, scores, classes, num_detections],feed_dict={image_tensor: image_np_expanded})
 
-
-      # Visualization of the results of a detection.
-      vis_util.visualize_boxes_and_labels_on_image_array(
-          image_np,
-          np.squeeze(boxes),
-          np.squeeze(classes).astype(np.int32),
-          np.squeeze(scores),
-          category_index,
-          use_normalized_coordinates=True,
-          line_thickness=8)
-
-
+  
       for i,b in enumerate(boxes[0]):
-        #                 car                    bus                  truck
-        if classes[0][i] == 3 or classes[0][i] == 6 or classes[0][i] == 8:
-          if scores[0][i] >= 0.5:
-            mid_x = (boxes[0][i][1]+boxes[0][i][3])/2
-            mid_y = (boxes[0][i][0]+boxes[0][i][2])/2
-            apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)
-            cv2.putText(image_np, '{}'.format(apx_distance), (int(mid_x*800),int(mid_y*450)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+        if classes[0][i] == 1 or classes[0][i] == 3 or classes[0][i] == 4 or classes[0][i] == 6 or classes[0][i] == 8 or classes[0][i] == 10 or classes[0][i] == 13:
+          vis_util.visualize_boxes_and_labels_on_image_array(
+              image_np,
+              np.squeeze(boxes),
+              np.squeeze(classes).astype(np.int32),
+              np.squeeze(scores),
+              category_index,
+              use_normalized_coordinates=True,
+              line_thickness=5)
 
-            if apx_distance <=0.5:
-              if mid_x > 0.3 and mid_x < 0.7:
-                cv2.putText(image_np, 'WARNING!!!', (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+          # Altert required for following classes
+          if  classes[0][i] == 1 or classes[0][i] == 3 or classes[0][i] == 4 or classes[0][i] == 6 or classes[0][i] == 8:   
+            if scores[0][i] >= 0.5:
+              mid_x = (boxes[0][i][1]+boxes[0][i][3])/2
+              mid_y = (boxes[0][i][0]+boxes[0][i][2])/2
+              apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)*10
+              cv2.putText(image_np, '{}'.format(apx_distance), (int(mid_x*455),int(mid_y*256)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2)
 
+              if apx_distance <=2:
+                if mid_x > 0.3 and mid_x < 0.7:
+                  cv2.putText(image_np, 'WARNING !',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+          
+          #traffic signal color
+          
+
+          # stop sign
+          if classes[0][i] == 13:
+            if scores[0][i] >=  0.5:
+              cv2.putText(image_np, 'STOP !!',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+              
 
       cv2.imshow('window',image_np)
 
