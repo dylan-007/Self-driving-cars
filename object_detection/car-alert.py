@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from numpy.lib.type_check import imag
 import six.moves.urllib as urllib
 import sys
 import tarfile
@@ -32,7 +33,7 @@ PATH_TO_LABELS = 'data' + '/mscoco_label_map.pbtxt'
 
 NUM_CLASSES = 90
 
-# ## Load a (frozen) Tensorflow model into memory.
+# Load a (frozen) Tensorflow model into memory.
 detection_graph = tf.Graph()
 with detection_graph.as_default():
   od_graph_def = tf.GraphDef()
@@ -42,8 +43,8 @@ with detection_graph.as_default():
     tf.import_graph_def(od_graph_def, name='')
 
 
-# ## Loading label map
-# Label maps map indices to category names, so that when our convolution network predicts `5`, we know that this corresponds to `airplane`.  Here we use internal utility functions, but anything that returns a dictionary mapping integers to appropriate string labels would be fine
+# Loading label map
+
 label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
@@ -51,36 +52,7 @@ category_index = label_map_util.create_category_index(categories)
 
 #########################################################################################
 
-
-def canny(image):
-    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray,(5,5),0)
-    canny = cv2.Canny(blur,50,150)
-    return canny
-
-def region(image):
-    height = image.shape[0]
-    polygons = np.array([[(0,height-75),(0,height),(455,height),(455,height-75),(280,120),(180,120)]])  #check error
-    mask = np.zeros_like(image)
-    cv2.fillPoly(mask,polygons,255)
-    # cv2.imshow("",mask)
-    masked_img = cv2.bitwise_and(image,mask)
-    return masked_img
-
-def display_lines(img, lines):
-    img = np.copy(img)
-    blank_image = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)
-
-    if lines is not None:
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                cv2.line(blank_image, (x1,y1), (x2,y2), (0, 255, 0), thickness=2)
-
-    img = cv2.addWeighted(img, 0.8, blank_image, 1, 0.0)
-    return img
-
-
-def detect_red_and_yellow(img, Threshold=0.01):
+def detect_red_and_yellow(img, Threshold=0.19):
     """
     detect red and yellow
     :param img:
@@ -112,17 +84,17 @@ def detect_red_and_yellow(img, Threshold=0.01):
 
     # Compare the percentage of red values
     rate = np.count_nonzero(mask) / (desired_dim[0] * desired_dim[1])
+    print(rate)
 
-    if rate > Threshold:
+    if rate >= Threshold:
         return True
     else:
         return False
 
 
 
+def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=5, min_score_thresh=0.5,traffic_light_label=10):
 
-def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=20, min_score_thresh=0.5,
-                               traffic_light_label=10):
     im_width, im_height = image.size
     stop_flag = False
     for i in range(min(max_boxes_to_draw, boxes.shape[0])):
@@ -147,76 +119,76 @@ def tensor_to_image(tensor):
     return Image.fromarray(tensor)
 
 
-k=5290
-with detection_graph.as_default():
-  with tf.Session(graph=detection_graph) as sess:
-    while True:
-      line_image = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
-      # line_image = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
-      # line_image = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal.jpg")
-
-      image_np = np.copy(line_image)
-      canny_img = canny(image_np)
-      cropped_img = region(canny_img)
-      lines = cv2.HoughLinesP(cropped_img,2,np.pi/180,10, np.array([]),minLineLength=60,maxLineGap=5)
-      image_np = display_lines(image_np,lines)
-
-      image = tensor_to_image(line_image)
-      image_np_expanded = np.expand_dims(image_np, axis=0)
-      image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-
-      
-      boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-      scores = detection_graph.get_tensor_by_name('detection_scores:0')
-      classes = detection_graph.get_tensor_by_name('detection_classes:0')
-      num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-      
-      # Actual detection
-      (boxes, scores, classes, num_detections) = sess.run([boxes, scores, classes, num_detections],feed_dict={image_tensor: image_np_expanded})
-
-      stop_flag = read_traffic_lights_object(image, np.squeeze(boxes), np.squeeze(scores),np.squeeze(classes).astype(np.int32))
-
-      if stop_flag:
-            print("red...stop!!!")
+def main():
+    k= 5200
+    with detection_graph.as_default():
+        with tf.Session(graph=detection_graph) as sess:
+            while True:
+                image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
+                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
+                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal-red.jpg")
+                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal-green.jpg")
 
 
-      for i,b in enumerate(boxes[0]):
-        if classes[0][i] == 1 or classes[0][i] == 3 or classes[0][i] == 4 or classes[0][i] == 6 or classes[0][i] == 8 or classes[0][i] == 10 or classes[0][i] == 13:
-          vis_util.visualize_boxes_and_labels_on_image_array(
-              image_np,
-              np.squeeze(boxes),
-              np.squeeze(classes).astype(np.int32),
-              np.squeeze(scores),
-              category_index,
-              use_normalized_coordinates=True,
-              line_thickness=5)
+                image = tensor_to_image(image_np)
+                image_np_expanded = np.expand_dims(image_np, axis=0)
+                image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
 
-          # Alert required for following classes
-          if  classes[0][i] == 1 or classes[0][i] == 3 or classes[0][i] == 4 or classes[0][i] == 6 or classes[0][i] == 8:   
-            if scores[0][i] >= 0.5:
-              mid_x = (boxes[0][i][1]+boxes[0][i][3])/2
-              mid_y = (boxes[0][i][0]+boxes[0][i][2])/2
-            
-              if mid_x > 0.25 and mid_x < 0.75:
-                apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)*10
                 
-                if apx_distance <=2:
-                  cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-                  cv2.putText(image_np, 'WARNING !',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
-                else:
-                  cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,0,0), 2)
-                  
-          
+                boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
+                scores = detection_graph.get_tensor_by_name('detection_scores:0')
+                classes = detection_graph.get_tensor_by_name('detection_classes:0')
+                num_detections = detection_graph.get_tensor_by_name('num_detections:0')
+                
+                # Actual detection
+                (boxes, scores, classes, num_detections) = sess.run([boxes, scores, classes, num_detections],feed_dict={image_tensor: image_np_expanded})
 
-          # stop sign
-          if classes[0][i] == 13:
-            if scores[0][i] >=  0.5:
-              cv2.putText(image_np, 'STOP !!',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
-              
+                vis_util.visualize_boxes_and_labels_on_image_array(image_np,np.squeeze(boxes),np.squeeze(classes).astype(np.int32),np.squeeze(scores),category_index,use_normalized_coordinates=True,line_thickness=5)
 
-      cv2.imshow('result',image_np)
+                for i,b in enumerate(boxes[0]):
 
-      k += 1
-      if cv2.waitKey(25) & 0xFF == ord('q'):
-          cv2.destroyAllWindows()
-          break
+                    # Distance Calculation and Alert required for following classes
+                    #                 person                  car                  motorcycle            bus                  truck     
+                    if  classes[0][i] == 1 or classes[0][i] == 3 or classes[0][i] == 4 or classes[0][i] == 6 or classes[0][i] == 8:   
+                        if scores[0][i] >= 0.5:
+                            mid_x = (boxes[0][i][1]+boxes[0][i][3])/2
+                            mid_y = (boxes[0][i][0]+boxes[0][i][2])/2
+                        
+                            if mid_x > 0.25 and mid_x < 0.75:
+                                apx_distance = round(((1 - (boxes[0][i][3] - boxes[0][i][1]))**4),1)*10
+                            
+                                if apx_distance <=2:
+                                    cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),int(mid_y*230)-50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
+                                    cv2.putText(image_np, 'WARNING !',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+                                else:
+                                    cv2.putText(image_np, '{}'.format(apx_distance) + ' m', (int(mid_x*455),int(mid_y*230)-50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+                            
+                    #traffic light 
+                    if classes[0][i] == 10:
+                        if scores[0][i] >= 0.5:
+                            stop_flag = read_traffic_lights_object(image, np.squeeze(boxes), np.squeeze(scores),np.squeeze(classes).astype(np.int32))
+
+                            if stop_flag:
+                                print("Red signal detected")
+                                cv2.putText(image_np, 'Red Signal..STOP!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
+                            else:
+                                print("Green signal detected")
+                                cv2.putText(image_np, 'GO!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+
+
+                    # stop sign
+                    if classes[0][i] == 13:
+                        if scores[0][i] >=  0.5:
+                            cv2.putText(image_np, 'STOP !!',(300,25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 3)
+                        
+
+                cv2.imshow('result',image_np)
+
+                k += 1
+
+                if cv2.waitKey(25) & 0xFF == ord('q'):
+                    cv2.destroyAllWindows()
+                    break
+
+if __name__ == "__main__":
+    main()
