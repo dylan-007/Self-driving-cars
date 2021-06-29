@@ -134,19 +134,21 @@ def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=
 
 
 def main():
-    k= 8200
+    k= 3096
     with detection_graph.as_default():
         with tf.Session(graph=detection_graph) as sess:
             while True:
-                image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
-                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
-                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/traffic-signal-red.jpg")
+
                 image = Image.open(r"C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
-                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/13.jpg")
+                image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
+
+                # image = Image.open(r"C:/Users/Dylan/Downloads/models/object_detection/5.jpeg")
+                # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/5.jpeg")
+
+
 
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-
 
                 boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
                 scores = detection_graph.get_tensor_by_name('detection_scores:0')
