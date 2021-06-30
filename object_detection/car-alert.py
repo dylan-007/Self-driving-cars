@@ -40,6 +40,15 @@ sess_1 = tf.InteractiveSession()
 saver = tf.train.Saver()
 saver.restore(sess_1, "C:/Users/Dylan/Downloads/models/object_detection/save/model.ckpt")
 
+# if path.isdir(MODEL_NAME) is False:
+#     opener = urllib.request.URLopener()
+#     opener.retrieve(DOWNLOAD_BASE + MODEL_FILE, MODEL_FILE)
+#     tar_file = tarfile.open(MODEL_FILE)
+#     for file in tar_file.getmembers():
+#         file_name = os.path.basename(file.name)
+#         if 'frozen_inference_graph.pb' in file_name:
+#             tar_file.extract(file, os.getcwd())
+
 
 # Load a (frozen) Tensorflow model into memory.
 detection_graph = tf.Graph()
