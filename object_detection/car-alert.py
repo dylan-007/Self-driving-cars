@@ -137,26 +137,28 @@ def read_traffic_lights_object(image, boxes, scores, classes, max_boxes_to_draw=
 def main():
     engine = pyttsx3.init()
     voices = engine.getProperty("voices")
+    rate = engine.getProperty("rate")
     volume = engine.getProperty("volume")
     engine.setProperty("volume",0.1)
-    engine.setProperty("voice",voices[0].id)
+    engine.setProperty("voice",voices[1].id)
 
     steering_img = cv2.imread('C:/Users/Dylan/Downloads/models/object_detection/steering_wheel_image.jpg',0)
     rowst,colst = steering_img.shape
     smoothed_angle = 0
 
-    k= 3096
+    k= 5900
 
     while True:
 
         image = Image.open(r"C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
         image_np = cv2.imread("C:/Users/Dylan/Autopilot-TensorFlow-master/driving_dataset_2/" + str(k) + ".jpg")
 
-        # image = Image.open(r"C:/Users/Dylan/Downloads/models/object_detection/5.jpeg")
-        # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/5.jpeg")
+        # image = Image.open(r"C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
+        # image_np = cv2.imread("C:/Users/Dylan/Downloads/models/object_detection/stop-sign.jpg")
 
 
         image_model = cv2.resize(image_np[-150:], (200, 66)) / 255.0
+        degrees = model.y.eval(feed_dict={model.x: [image_model], model.keep_prob: 1.0})[0][0] * 180.0 / 3.14159265
                 
         image_np_expanded = np.expand_dims(image_np, axis=0)
         image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -201,7 +203,8 @@ def main():
                     if stop_flag == 1:
                         # print("Red signal detected")
                         cv2.putText(image_np, 'STOP!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
-                        engine.say("stop red signal detected")     
+                        engine.say("stop  red signal detected") 
+                        engine.runAndWait()    
 
                     # elif stop_flag == 2:
                     #     # print("Yellow signal detected")
@@ -211,9 +214,9 @@ def main():
                     elif stop_flag == 3:
                         # print("Green signal detected")
                         cv2.putText(image_np, 'GO !!',(100,25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,0), 2)
-                        engine.say("go")
+                        engine.say("go  green signal detected")
+                        engine.runAndWait()
                         
-                    engine.runAndWait()
                     
 
             # stop sign
@@ -224,11 +227,11 @@ def main():
                     engine.runAndWait()
 
 
-        #steering angle calculation
-        degrees = model.y.eval(feed_dict={model.x: [image_model], model.keep_prob: 1.0})[0][0] * 180.0 / 3.14159265
+        #steering wheel
         smoothed_angle += 0.2 * pow(abs((degrees - smoothed_angle)), 2.0 / 3.0) * (degrees - smoothed_angle) / abs(degrees - smoothed_angle)
         M = cv2.getRotationMatrix2D((colst/2,rowst/2),-smoothed_angle,1)
         dst = cv2.warpAffine(steering_img,M,(colst,rowst))
+
         cv2.imshow('result',image_np)
         cv2.imshow("steering wheel", dst)
 
